@@ -1,0 +1,96 @@
+# Stage 2: trusted re-validation + auto-merge.
+# Runs from the base branch definition (a fork cannot alter this file), in the
+# trusted context. It re-runs the FULL validation itself at the pinned PR head SHA
+# and only then merges. The merge token lives in a separate job that never touches
+# PR content. This defeats the poisoned-pipeline / secret-exfiltration attack.
+name: gatekeeper
+
+on:
+  workflow_run:
+    workflows: ["validate"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  revalidate:
+    # Only consider successful validations of pull_request runs.
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      pr: ${{ steps.meta.outputs.pr }}
+      head: ${{ steps.meta.outputs.head }}
+      ok: ${{ steps.validate.outputs.ok }}
+    steps:
+      - name: Resolve PR + pinned head SHA (trusted source) and changed files
+        id: meta
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const prs = run.pull_requests || [];
+            if (prs.length === 0) { core.setFailed('no associated PR'); return; }
+            const prNum = prs[0].number;
+            // Re-fetch from the API (trusted) and pin the head SHA we will validate+merge.
+            const pr = await github.rest.pulls.get({ ...context.repo, pull_number: prNum });
+            const head = pr.data.head.sha;
+            const files = await github.paginate(github.rest.pulls.listFiles, { ...context.repo, pull_number: prNum, per_page: 100 });
+            const shard = /^staging\/[0-9a-f]{2}\/[0-9a-f]{2}\/[0-9a-f]{64}\.json$/;
+            const bad = files.filter(f => !shard.test(f.filename) || f.status === 'removed' || f.status === 'renamed');
+            if (bad.length) { core.setFailed('PR touches non-staging or non-add paths: ' + bad.map(f=>f.filename).join(', ')); return; }
+            const fs = require('fs');
+            fs.writeFileSync('changed.txt', files.map(f => f.filename).join('\n') + '\n');
+            core.setOutput('pr', String(prNum));
+            core.setOutput('head', head);
+
+      - name: Checkout pinned head (data only, no creds)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          repository: ${{ github.event.workflow_run.head_repository.full_name }}
+          ref: ${{ steps.meta.outputs.head }}
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      # validate.py is standard-library only.
+      - name: Re-validate from scratch (authoritative)
+        id: validate
+        run: |
+          python scripts/validate.py --changed changed.txt
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+
+  merge:
+    needs: revalidate
+    if: ${{ needs.revalidate.outputs.ok == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Merge at the exact validated SHA (squash)
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const prNum = Number('${{ needs.revalidate.outputs.pr }}');
+            const head = '${{ needs.revalidate.outputs.head }}';
+            // Refuse if the head moved since validation (TOCTOU guard): sha pin makes
+            // GitHub reject the merge if the branch advanced.
+            await github.rest.pulls.merge({
+              ...context.repo,
+              pull_number: prNum,
+              sha: head,
+              merge_method: 'squash',
+            });
+            await github.rest.issues.createComment({
+              ...context.repo, issue_number: prNum,
+              body: '✅ Validated and merged by the gatekeeper. Thank you for contributing! Your records will appear in the published dataset after the next compaction run.'
+            });
