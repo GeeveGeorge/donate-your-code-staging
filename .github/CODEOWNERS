@@ -1,0 +1,11 @@
+# Everything except the data directory requires maintainer review. Combined with
+# branch protection ("require review from Code Owners"), this makes it impossible
+# to change the gate, the scripts, the schema, or the workflows via a contribution
+# PR — contribution PRs may only ADD files under staging/**.
+*                       @GeeveGeorge
+/.github/               @GeeveGeorge
+/.github/workflows/     @GeeveGeorge
+/scripts/               @GeeveGeorge
+/schema/                @GeeveGeorge
+/manifest/              @GeeveGeorge
+/CODEOWNERS             @GeeveGeorge

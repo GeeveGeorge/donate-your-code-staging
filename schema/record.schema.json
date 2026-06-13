@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/donate-your-code/dyc/schema/record.schema.json",
+  "title": "dyc donation record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "record_id",
+    "model",
+    "provenance",
+    "dco",
+    "license",
+    "client_version",
+    "scrubber_version",
+    "is_subagent",
+    "models_present",
+    "messages"
+  ],
+  "properties": {
+    "schema_version": { "const": "dyc.record.v1" },
+    "record_id": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "model": { "const": "claude-fable-5" },
+    "provenance": { "const": "self-attested" },
+    "contributor": { "type": "string" },
+    "dco": { "type": "boolean" },
+    "license": { "const": "CC0-1.0" },
+    "client_version": { "type": "string" },
+    "scrubber_version": { "type": "string" },
+    "claude_code_version": { "type": "string" },
+    "is_subagent": { "type": "boolean" },
+    "parent_session_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "models_present": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "messages": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/message" }
+    },
+    "redaction_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "keys": { "type": "integer" },
+        "secrets": { "type": "integer" },
+        "high_entropy": { "type": "integer" },
+        "emails": { "type": "integer" },
+        "phones": { "type": "integer" },
+        "cards": { "type": "integer" },
+        "ips": { "type": "integer" },
+        "macs": { "type": "integer" },
+        "paths": { "type": "integer" },
+        "usernames": { "type": "integer" },
+        "images": { "type": "integer" }
+      }
+    }
+  },
+  "$defs": {
+    "message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "blocks"],
+      "properties": {
+        "role": { "enum": ["user", "assistant", "tool"] },
+        "model": { "type": "string" },
+        "stop_reason": { "type": "string" },
+        "usage": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "cache_creation_input_tokens": { "type": "integer" },
+            "cache_read_input_tokens": { "type": "integer" },
+            "service_tier": { "type": "string" }
+          }
+        },
+        "blocks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/block" }
+        }
+      }
+    },
+    "block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "enum": ["text", "thinking", "fallback", "tool_use", "tool_result", "image"] },
+        "text": { "type": "string" },
+        "ref": { "type": "integer" },
+        "name": { "type": "string" },
+        "input_json": { "type": "string" },
+        "is_error": { "type": "boolean" },
+        "truncated": { "type": "boolean" },
+        "image": { "type": "string" },
+        "content": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/block" }
+        }
+      }
+    }
+  }
+}

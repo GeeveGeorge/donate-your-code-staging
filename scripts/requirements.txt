@@ -1,0 +1,8 @@
+# Dependencies for the compaction job only. The validate.py gate is standard-
+# library-only, so the untrusted validation job installs nothing.
+#
+# Before public launch, regenerate this with fully hashed pins:
+#   uv pip compile --generate-hashes requirements.in -o requirements.txt
+# and have CI install with `pip install --require-hashes`.
+pyarrow>=15,<19
+huggingface_hub>=0.24,<1.0

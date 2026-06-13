@@ -1,0 +1,97 @@
+{
+  "schema_version": "dyc.record.v1",
+  "record_id": "3d8fc26fd4508c7236e434663a0f8d8566d6987586dee3eab0821a72434eac1d",
+  "model": "claude-fable-5",
+  "provenance": "self-attested",
+  "dco": false,
+  "license": "CC0-1.0",
+  "client_version": "dyc/dev",
+  "scrubber_version": "scrub-2d31f23b55eaf4c8",
+  "claude_code_version": "2.1.159",
+  "is_subagent": false,
+  "models_present": [
+    "claude-fable-5"
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "blocks": [
+        {
+          "type": "text",
+          "text": "list files in «HOME»//proj"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "model": "claude-fable-5",
+      "stop_reason": "tool_use",
+      "usage": {
+        "cache_creation_input_tokens": 120,
+        "cache_read_input_tokens": 3400,
+        "service_tier": "standard"
+      },
+      "blocks": [
+        {
+          "type": "thinking",
+          "text": "I should read the credentials maybe"
+        },
+        {
+          "type": "text",
+          "text": "Looking at the directory."
+        },
+        {
+          "type": "tool_use",
+          "ref": 0,
+          "name": "Bash",
+          "input_json": "{\"command\":\"ls «HOME»//proj\",\"timeout\":5000}"
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "blocks": [
+        {
+          "type": "tool_result",
+          "ref": 0,
+          "is_error": false,
+          "content": [
+            {
+              "type": "text",
+              "text": "main.go README.md  token=«SECRET:aws»"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "model": "claude-fable-5",
+      "stop_reason": "end_turn",
+      "usage": {
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 3600,
+        "service_tier": "standard"
+      },
+      "blocks": [
+        {
+          "type": "text",
+          "text": "There are two files. I will not print the token."
+        }
+      ]
+    }
+  ],
+  "redaction_summary": {
+    "keys": 0,
+    "secrets": 1,
+    "high_entropy": 0,
+    "emails": 0,
+    "phones": 0,
+    "cards": 0,
+    "ips": 0,
+    "macs": 0,
+    "paths": 2,
+    "usernames": 0,
+    "images": 0
+  }
+}
