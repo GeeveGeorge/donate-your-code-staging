@@ -112,6 +112,7 @@ def push_to_hf(changed_dirs):
 def main():
     seen = load_seen()
     files = sorted(glob.glob(os.path.join(ROOT, "staging", "*", "*", "*.json")))
+    files += sorted(glob.glob(os.path.join(ROOT, "staging", "incoming", "*.json")))
     rows_by_shard = {}
     new_ids = []
     drained = []
@@ -121,8 +122,9 @@ def main():
         try:
             V.validate_file(p, seen)  # re-validate from scratch
             rec = json.load(open(p))
-            rid = rec["record_id"]
-            if record_id(rec) != rid or rid in seen:
+            rid = record_id(rec)       # server assigns the content-address id
+            rec["record_id"] = rid
+            if rid in seen:
                 drained.append(p)
                 continue
             aa, bb = rid[:2], rid[2:4]

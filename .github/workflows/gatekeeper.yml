@@ -41,8 +41,8 @@ jobs:
             const pr = await github.rest.pulls.get({ ...context.repo, pull_number: prNum });
             const head = pr.data.head.sha;
             const files = await github.paginate(github.rest.pulls.listFiles, { ...context.repo, pull_number: prNum, per_page: 100 });
-            const shard = /^staging\/[0-9a-f]{2}\/[0-9a-f]{2}\/[0-9a-f]{64}\.json$/;
-            const bad = files.filter(f => !shard.test(f.filename) || f.status === 'removed' || f.status === 'renamed');
+            const ok = /^staging\/([0-9a-f]{2}\/[0-9a-f]{2}\/[0-9a-f]{64}|incoming\/[A-Za-z0-9._-]{1,80})\.json$/;
+            const bad = files.filter(f => !ok.test(f.filename) || f.status === 'removed' || f.status === 'renamed');
             if (bad.length) { core.setFailed('PR touches non-staging or non-add paths: ' + bad.map(f=>f.filename).join(', ')); return; }
             const fs = require('fs');
             fs.writeFileSync('changed.txt', files.map(f => f.filename).join('\n') + '\n');

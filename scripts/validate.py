@@ -26,6 +26,7 @@ sys.path.insert(0, HERE)
 from canonical import record_id  # noqa: E402
 
 SHARD_RE = re.compile(r"^staging/([0-9a-f]{2})/([0-9a-f]{2})/([0-9a-f]{64})\.json$")
+INCOMING_RE = re.compile(r"^staging/incoming/[\w.\-]{1,80}\.json$")
 MSG_MODEL = "claude-fable-5"
 SYNTHETIC = "<synthetic>"
 BLOCK_TYPES = {"text", "thinking", "fallback", "tool_use", "tool_result", "image"}
@@ -158,8 +159,10 @@ def validate_file(path, seen):
     idx = path.replace(os.sep, "/").find("staging/")
     if idx >= 0:
         rel = path[idx:]
-    if not SHARD_RE.match(rel.replace(os.sep, "/")):
-        raise Reject(f"path not in staging/<aa>/<bb>/<id>.json form: {rel}")
+    relslash = rel.replace(os.sep, "/")
+    incoming = bool(INCOMING_RE.match(relslash))
+    if not incoming and not SHARD_RE.match(relslash):
+        raise Reject(f"path must be staging/incoming/<name>.json or staging/<aa>/<bb>/<id>.json: {rel}")
     size = os.path.getsize(path)
     if size > MAX_FILE_BYTES:
         raise Reject(f"file too large: {size} bytes")
@@ -173,8 +176,15 @@ def validate_file(path, seen):
         raise Reject("record must be a JSON object")
     check_structure(rec)
     check_secrets(rec)
-    check_content_address(rec, rel)
-    if rec["record_id"] in seen:
+    if incoming:
+        # Agent-built record: the server assigns the content-address id, so we
+        # only require the content be clean and well-formed. Compute the id for
+        # dedup info; the client need not have provided one.
+        rid = record_id(rec)
+    else:
+        check_content_address(rec, rel)
+        rid = rec["record_id"]
+    if rid in seen:
         raise Reject("duplicate: record_id already ingested")
 
 

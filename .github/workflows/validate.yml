@@ -32,9 +32,10 @@ jobs:
 
       - name: Path scope — reject anything outside staging/**
         run: |
-          if grep -vE '^staging/[0-9a-f]{2}/[0-9a-f]{2}/[0-9a-f]{64}\.json$' changed.txt | grep -q .; then
+          ALLOWED='^staging/([0-9a-f]{2}/[0-9a-f]{2}/[0-9a-f]{64}|incoming/[A-Za-z0-9._-]{1,80})\.json$'
+          if grep -vE "$ALLOWED" changed.txt | grep -q .; then
             echo "::error::PR modifies paths outside staging/**. Contribution PRs may only add data records."
-            grep -vE '^staging/[0-9a-f]{2}/[0-9a-f]{2}/[0-9a-f]{64}\.json$' changed.txt
+            grep -vE "$ALLOWED" changed.txt
             exit 1
           fi
 
